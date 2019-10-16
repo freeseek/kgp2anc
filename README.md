@@ -36,6 +36,11 @@ cd bcftools && make && cd ..
 /bin/cp bcftools/bcftools $HOME/bin/
 ```
 
+Make sure the directory with the plugins is available to bcftools
+```
+export BCFTOOLS_PLUGINS=$HOME/bin
+```
+
 Install latest development version of plink 1.9
 ```
 wget http://s3.amazonaws.com/plink1-assets/dev/plink_linux_x86_64.zip
