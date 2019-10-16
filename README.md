@@ -10,7 +10,12 @@ Installation
 
 Install basic tools (Debian/Ubuntu specific):
 ```
-sudo apt install wget liblzma-dev libbz2-dev libgsl0-dev gzip unzip samtools python3-pandas r-base-core
+sudo apt install wget gzip unzip samtools python3-pandas r-base-core
+```
+
+Optionally, you can install these libraries to activate further HTSlib features:
+```
+sudo apt install libbz2-dev libssl-dev liblzma-dev libgsl0-dev
 ```
 
 Preparation steps
@@ -18,22 +23,22 @@ Preparation steps
 mkdir -p $HOME/bin $HOME/res/kgp && cd /tmp
 ```
 
-Download latest version of `htslib` and `bcftools` (if not downloaded already)
+Download latest version of <a href="https://github.com/samtools/htslib">HTSlib</a> and <a href="https://github.com/samtools/bcftools">BCFtools</a> (if not downloaded already)
 ```
 git clone --branch=develop git://github.com/samtools/htslib.git
 git clone --branch=develop git://github.com/samtools/bcftools.git
 ```
 
-Compile latest version of `htslib` (optionally disable `bz2` and `lzma`) and `bcftools`
+Compile latest version of HTSlib (optionally disable bz2, gcs, and lzma) and BCFtools (make sure you are using gcc version 5 or newer)
 ```
-cd htslib && autoheader && (autoconf || autoconf) && ./configure --disable-bz2 --disable-lzma && make && cd ..
+cd htslib && autoheader && (autoconf || autoconf) && ./configure --disable-bz2 --disable-gcs --disable-lzma && make && cd ..
 cd bcftools && make && cd ..
 /bin/cp bcftools/bcftools $HOME/bin/
 ```
 
 Install latest development version of plink 1.9
 ```
-wget https://www.cog-genomics.org/static/bin/plink/plink_linux_x86_64_dev.zip
+wget http://s3.amazonaws.com/plink1-assets/dev/plink_linux_x86_64.zip
 unzip -od $HOME/bin/ plink_linux_x86_64_dev.zip plink
 ```
 
@@ -91,8 +96,8 @@ Download list of Illumina Omni 2.5 and Affymetrix 6.0 markers
 cd $HOME/res/kgp
 wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/supporting/hd_genotype_chip/broad_intensities/Omni25_genotypes_2141_samples.b37.v2.vcf.gz
 wget ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/supporting/hd_genotype_chip/coriell_affy6_intensities/ALL.wgs.nhgri_coriell_affy_6.20131213.snps_indels.chip.genotypes.vcf.gz
-$HOME/bin/bcftools query -f "%CHROM\t%POS\n" Omni25_genotypes_2141_samples.b37.v2.vcf.gz | sort | uniq > kgp.omni25.grch37.chr.pos
-$HOME/bin/bcftools query -f "%CHROM\t%POS\n" ALL.wgs.nhgri_coriell_affy_6.20131213.snps_indels.chip.genotypes.vcf.gz | sort | uniq > kgp.affy60.grch37.chr.pos
+bcftools query -f "%CHROM\t%POS\n" Omni25_genotypes_2141_samples.b37.v2.vcf.gz | sort | uniq > kgp.omni25.grch37.chr.pos
+bcftools query -f "%CHROM\t%POS\n" ALL.wgs.nhgri_coriell_affy_6.20131213.snps_indels.chip.genotypes.vcf.gz | sort | uniq > kgp.affy60.grch37.chr.pos
 join -t@ kgp.omni25.grch37.chr.pos kgp.affy60.grch37.chr.pos > kgp.array.grch37.chr.pos
 ```
 
@@ -118,10 +123,10 @@ done
 Subset phase 3 GRCh37 genotypes to array markers (takes a few hours)
 ```
 cd $HOME/res/kgp
-$HOME/bin/bcftools concat --no-version -Ov ALL.chr{{1..22},X}.phase3_integrated.20130502.genotypes.bcf | \
+bcftools concat --no-version -Ov ALL.chr{{1..22},X}.phase3_integrated.20130502.genotypes.bcf | \
   awk 'NR==FNR {x[$1":"$2]++} NR>FNR && ($0~"^#" || $1":"$2 in x)' kgp.array.grch37.chr.pos - | \
-  $HOME/bin/bcftools view --no-version -Ob -o kgp.array.grch37.bcf && \
-  $HOME/bin/bcftools index -f kgp.array.grch37.bcf
+  bcftools view --no-version -Ob -o kgp.array.grch37.bcf && \
+  bcftools index -f kgp.array.grch37.bcf
 ```
 
 Convert GRCh37 genotypes to plink format
@@ -147,24 +152,24 @@ Download 1000 Genomes project phase 3 genotypes for GRCh38 (notice this loop tak
 cd $HOME/res/kgp
 wget http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/supporting/GRCh38_positions/ALL.chr{{1..22},X,Y}_GRCh38.genotypes.20170504.vcf.gz{,.tbi}
 for chr in {1..22} X Y; do
-  ($HOME/bin/bcftools view --no-version -h ALL.chr${chr}_GRCh38.genotypes.20170504.vcf.gz | \
+  (bcftools view --no-version -h ALL.chr${chr}_GRCh38.genotypes.20170504.vcf.gz | \
     grep -v "^##contig=<ID=[GNh]" | sed 's/^##contig=<ID=MT/##contig=<ID=chrM/;s/^##contig=<ID=\([0-9XY]\)/##contig=<ID=chr\1/'; \
-  $HOME/bin/bcftools view --no-version -H -c 2 ALL.chr${chr}_GRCh38.genotypes.20170504.vcf.gz | \
+  bcftools view --no-version -H -c 2 ALL.chr${chr}_GRCh38.genotypes.20170504.vcf.gz | \
   grep -v "[0-9]|\.\|\.|[0-9]" | sed 's/^/chr/') | \
-  $HOME/bin/bcftools norm --no-version -Ou -m -any | \
-  $HOME/bin/bcftools norm --no-version -Ob -o ALL.chr${chr}_GRCh38.genotypes.20170504.bcf -d none -f $HOME/res/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna && \
-  $HOME/bin/bcftools index -f ALL.chr${chr}_GRCh38.genotypes.20170504.bcf
+  bcftools norm --no-version -Ou -m -any | \
+  bcftools norm --no-version -Ob -o ALL.chr${chr}_GRCh38.genotypes.20170504.bcf -d none -f $HOME/res/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna && \
+  bcftools index -f ALL.chr${chr}_GRCh38.genotypes.20170504.bcf
 done
 ```
 
 Subset phase 3 GRCh38 genotypes to array markers (takes a few hours)
 ```
 cd $HOME/res/kgp
-$HOME/bin/bcftools concat --no-version -Ov ALL.chr{{1..22},X}_GRCh38.genotypes.20170504.bcf | \
+bcftools concat --no-version -Ov ALL.chr{{1..22},X}_GRCh38.genotypes.20170504.bcf | \
   awk 'NR==FNR {x["chr"$1":"$2]++} NR>FNR && $0!~"^#" {y=$8; gsub(".*GRCH37_POS=","",y); gsub(";.*","",y)}
   NR>FNR && ($0~"^#" || $1":"y in x)' kgp.array.grch37.chr.pos - | \
-  $HOME/bin/bcftools view --no-version -Ob -o kgp.array.grch38.bcf && \
-  $HOME/bin/bcftools index -f kgp.array.grch38.bcf
+  bcftools view --no-version -Ob -o kgp.array.grch38.bcf && \
+  bcftools index -f kgp.array.grch38.bcf
 ```
 
 Convert GRCh38 genotypes to plink format

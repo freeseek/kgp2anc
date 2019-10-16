@@ -36,13 +36,11 @@ parser.add_argument('--filter', metavar = '<expr>', type = str, help = 'exclude 
 parser.add_argument('--set-GTs', metavar = '<char>', type = str, default = '.', help = 'set genotypes of failed samples to missing (.) or ref (0) (see "bcftools filter -h") [.]')
 parser.add_argument('--out', metavar = '[prefix]', type = str, default = 'plink', help = 'Specify prefix for output files (see "plink --help --out") [plink]')
 parser.add_argument('--mem', metavar = '<int>', type = int, help = 'main workspace size, in GB')
-parser.add_argument('--impute-sex', metavar = '{female max F} {male min F}', type = float, nargs = '*', help = 'Impute sex from chromosome X (see "plink --help --impute-sex") [.4 .4]')
+parser.add_argument('--impute-sex', metavar = '{female max F} {male min F}', type = float, nargs = '*', help = 'Impute sex from chromosome X (see "plink --help --impute-sex")')
 
 try:
   parser.error = parser.exit
   args = parser.parse_args()
-  if args.impute_sex == None:
-    args.impute_sex = [.4, .4]
 except SystemExit:
   parser.print_help()
   exit(2)
