@@ -38,7 +38,8 @@ cd bcftools && make && cd ..
 
 Make sure the directory with the plugins is available to bcftools
 ```
-export BCFTOOLS_PLUGINS=$HOME/bin
+export PATH="$HOME/bin:$PATH"
+export BCFTOOLS_PLUGINS="$HOME/bin"
 ```
 
 Install latest development version of plink 1.9
